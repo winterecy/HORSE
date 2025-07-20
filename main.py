@@ -21,7 +21,7 @@ CONFIG_FILE = "overlay_config.json"
 active_overlays = []
 
 VERSION = "1.0.0"
-UPDATE_URL = ""
+UPDATE_URL = "https://raw.githubusercontent.com/winterecy/HORSE/main/latest.json"
 
 def update_check():
     try:

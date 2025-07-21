@@ -9,6 +9,8 @@ import requests
 import zipfile
 import shutil
 import subprocess
+import winreg
+
 from PyQt5.QtWidgets import (
     QApplication, QLabel, QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QPushButton, QFileDialog, QSpinBox, QDoubleSpinBox, QMessageBox, QAction,
@@ -20,8 +22,19 @@ from PyQt5.QtCore import Qt, QTimer, QPoint, QPropertyAnimation, QObject, pyqtSi
 CONFIG_FILE = "overlay_config.json"
 active_overlays = []
 
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 UPDATE_URL = "https://raw.githubusercontent.com/winterecy/HORSE/refs/heads/master/latest.json"
+
+# autorun on startup
+def startup(name, path):
+    try:
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
+                             r"Software\Microsoft\Windows\CurrentVersion\Run",
+                             0, winreg.KEY_SET_VALUE)
+        winreg.SetValueEx(key, name, 0, winreg.REG_SZ, path)
+        winreg.CloseKey(key)
+    except Exception as e:
+        print(f"the horse was not able to run on startup: {e}")
 
 def update_check():
     try:
@@ -246,6 +259,9 @@ def main():
     app = QApplication(sys.argv)
     update_check()
 
+    exe_path = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(__file__)
+    startup("HORSE", exe_path)
+
     def resource_path(relative_path):
         if getattr(sys, 'frozen', False):
             return os.path.join(sys._MEIPASS, relative_path)
@@ -301,7 +317,28 @@ def main():
 
     tray_icon.setContextMenu(tray_menu)
     tray_icon.show()
-    settings_window.show()
+    
+    # try to load the saved config and auto-start
+    try:
+        with open(CONFIG_FILE, "r") as f:
+            config = json.load(f)
+
+        image_path = config.get("image_path", "")
+        duration = config.get("duration", 5)
+        max_width = config.get("max_width", 300)
+        max_height = config.get("max_height", 300)
+        hotkey = config.get("hotkey", "h").strip().lower()
+
+        if image_path:
+            overlay_app = OverlayApp(image_path, duration, max_width, max_height, hotkey)
+            overlay_app.run()
+        else:
+            settings_window.show()
+
+    except Exception as e:
+        print(f"Failed to load config: {e}")
+        settings_window.show()
+
 
     sys.exit(app.exec())
 

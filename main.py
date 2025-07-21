@@ -21,7 +21,7 @@ CONFIG_FILE = "overlay_config.json"
 active_overlays = []
 
 VERSION = "1.0.0"
-UPDATE_URL = "https://raw.githubusercontent.com/winterecy/HORSE/main/latest.json"
+UPDATE_URL = "https://raw.githubusercontent.com/winterecy/HORSE/refs/heads/master/latest.json"
 
 def update_check():
     try:
@@ -31,7 +31,7 @@ def update_check():
             latest_version = latest_info.get("version")
             download_url = latest_info.get("url")
 
-            if latest_version and latest_version > VERSION:
+            if latest_version and latest_version != VERSION:
                 reply = QMessageBox.question(None, "please update me",
                                              f"The HORSE is gungry and needs updated to version {latest_version}. install it please?",
                                              QMessageBox.Yes | QMessageBox.No)

@@ -11,7 +11,7 @@ import shutil
 import subprocess
 from PyQt5.QtWidgets import (
     QApplication, QLabel, QWidget, QVBoxLayout, QHBoxLayout,
-    QLineEdit, QPushButton, QFileDialog, QSpinBox, QMessageBox, QAction,
+    QLineEdit, QPushButton, QFileDialog, QSpinBox, QDoubleSpinBox, QMessageBox, QAction,
     QSystemTrayIcon, QMenu
 )
 from PyQt5.QtGui import QPixmap, QIcon
@@ -20,7 +20,7 @@ from PyQt5.QtCore import Qt, QTimer, QPoint, QPropertyAnimation, QObject, pyqtSi
 CONFIG_FILE = "overlay_config.json"
 active_overlays = []
 
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 UPDATE_URL = "https://raw.githubusercontent.com/winterecy/HORSE/refs/heads/master/latest.json"
 
 def update_check():
@@ -130,9 +130,11 @@ class SettingsWindow(QWidget):
         img_row.addWidget(browse_button)
         layout.addLayout(img_row)
 
-        self.duration_input = QSpinBox()
-        self.duration_input.setRange(1, 60)
-        self.duration_input.setValue(5)
+        self.duration_input = QDoubleSpinBox()
+        self.duration_input.setRange(0.1, 60.0)
+        self.duration_input.setSingleStep(0.1)
+        self.duration_input.setDecimals(2)
+        self.duration_input.setValue(5.0)
         layout.addWidget(QLabel("Duration (seconds)"))
         layout.addWidget(self.duration_input)
 

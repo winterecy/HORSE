@@ -120,7 +120,7 @@ class HotkeyListener(QObject):
 class SettingsWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Overlay Settings")
+        self.setWindowTitle(f"Overlay Settings - v{VERSION}")
         self.setFixedSize(400, 340)
 
         layout = QVBoxLayout()

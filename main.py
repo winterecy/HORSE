@@ -49,13 +49,13 @@ def download_update(url):
         with zipfile.ZipFile("update_temp.zip", "r") as zip_ref:
             zip_ref.extractall("update_temp")
         
-        shutil.copy("update_temp/main.exe", "main.exe")
+        shutil.copy("update_temp/HORSE.exe", "HORSE.exe")
 
         os.remove("update_temp.zip")
         shutil.rmtree("update_temp")
 
         QMessageBox.information(None, "updated :D", "thank you for feeding me - horse")
-        subprocess.Popen("main.exe")
+        subprocess.Popen("HORSE.exe")
         sys.exit()
     
     except Exception as e:
@@ -236,7 +236,7 @@ class OverlayApp:
     def run(self):
         if self.listener:
             keyboard.remove_hotkey(self.listener.hotkey)
-            
+
         self.listener = HotkeyListener(self.hotkey)
         self.listener.trigger.connect(self.show_overlay)
 

@@ -20,7 +20,7 @@ from PyQt5.QtCore import Qt, QTimer, QPoint, QPropertyAnimation, QObject, pyqtSi
 CONFIG_FILE = "overlay_config.json"
 active_overlays = []
 
-VERSION = "1.0.1"
+VERSION = "1.0.0"
 UPDATE_URL = "https://raw.githubusercontent.com/winterecy/HORSE/refs/heads/master/latest.json"
 
 def update_check():
@@ -49,13 +49,12 @@ def download_update(url):
         with zipfile.ZipFile("update_temp.zip", "r") as zip_ref:
             zip_ref.extractall("update_temp")
         
-        shutil.copy("update_temp/HORSE.exe", "HORSE.exe")
+        shutil.copy("update_temp/HORSE.exe", "HORSE_NEW.exe")
+
+        subprocess.Popen(["updater.exe"], shell=True)
 
         os.remove("update_temp.zip")
         shutil.rmtree("update_temp")
-
-        QMessageBox.information(None, "updated :D", "thank you for feeding me - horse")
-        subprocess.Popen("HORSE.exe")
         sys.exit()
     
     except Exception as e:
@@ -101,7 +100,6 @@ class FadingOverlay(QLabel):
             active_overlays.remove(self)
         self.close()
 
-
 class HotkeyListener(QObject):
     trigger = pyqtSignal()
 
@@ -115,7 +113,6 @@ class HotkeyListener(QObject):
         keyboard.add_hotkey(self.hotkey, lambda: self.trigger.emit())
         while True:
             time.sleep(0.05)
-
 
 class SettingsWindow(QWidget):
     def __init__(self):
@@ -223,7 +220,6 @@ class SettingsWindow(QWidget):
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to load config:\n{e}")
 
-
 class OverlayApp:
     def __init__(self, image_path, duration, max_width, max_height, hotkey):
         self.image_path = image_path
@@ -244,7 +240,6 @@ class OverlayApp:
         overlay = FadingOverlay(self.image_path, self.duration, self.max_width, self.max_height)
         active_overlays.append(overlay)
 
-
 def main():
     app = QApplication(sys.argv)
     update_check()
@@ -253,7 +248,7 @@ def main():
         if getattr(sys, 'frozen', False):
             return os.path.join(sys._MEIPASS, relative_path)
         return os.path.join(os.path.abspath("."), relative_path)
-    
+
     icon_path = resource_path("horse_button.png")
     icon = QIcon(icon_path)
     if icon.isNull():
@@ -306,10 +301,7 @@ def main():
     tray_icon.show()
     settings_window.show()
 
-    # QTimer.singleShot(0, lambda: overlay_app.run())
-
     sys.exit(app.exec())
-
 
 if __name__ == "__main__":
     main()

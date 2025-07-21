@@ -125,7 +125,7 @@ class SettingsWindow(QWidget):
 
         layout = QVBoxLayout()
 
-        self.image_path_input = QLineEdit("horse_button.png")
+        self.image_path_input = QLineEdit("")
         browse_button = QPushButton("Browse")
         browse_button.clicked.connect(self.browse_image)
         img_row = QHBoxLayout()
@@ -231,8 +231,12 @@ class OverlayApp:
         self.max_width = max_width
         self.max_height = max_height
         self.hotkey = hotkey
+        self.listener = None
 
     def run(self):
+        if self.listener:
+            keyboard.remove_hotkey(self.listener.hotkey)
+            
         self.listener = HotkeyListener(self.hotkey)
         self.listener.trigger.connect(self.show_overlay)
 
@@ -245,8 +249,20 @@ def main():
     app = QApplication(sys.argv)
     update_check()
 
-    tray_icon = QSystemTrayIcon(QIcon("horse_button.png"), parent=app)
+    def resource_path(relative_path):
+        if getattr(sys, 'frozen', False):
+            return os.path.join(sys._MEIPASS, relative_path)
+        return os.path.join(os.path.abspath("."), relative_path)
+    
+    icon_path = resource_path("horse_button.png")
+    icon = QIcon(icon_path)
+    if icon.isNull():
+        print("Tray icon failed to load. Check path:", icon_path)
+
+    tray_icon = QSystemTrayIcon(icon, parent=app)
     tray_menu = QMenu()
+    tray_icon.setVisible(True)
+    print("Tray icon visible?", tray_icon.isVisible())
 
     overlay_app = OverlayApp("", 0, 0, 0, "")
     settings_window = SettingsWindow()
@@ -288,8 +304,10 @@ def main():
 
     tray_icon.setContextMenu(tray_menu)
     tray_icon.show()
-
     settings_window.show()
+
+    # QTimer.singleShot(0, lambda: overlay_app.run())
+
     sys.exit(app.exec())
 
 

@@ -24,7 +24,7 @@ from pynput import keyboard as pynput_keyboard
 CONFIG_FILE = "overlay_config.json"
 active_overlays = []
 
-VERSION = "1.0.2"
+VERSION = "1.1.0"
 UPDATE_URL = "https://raw.githubusercontent.com/winterecy/HORSE/refs/heads/master/latest.json"
 
 # autorun on startup
@@ -137,6 +137,16 @@ class HotkeyListener(QObject):
         keyboard.add_hotkey(self.hotkey, lambda: self.trigger.emit())
         while True:
             time.sleep(0.05)
+
+def start_delete_listener():
+    def on_press(key):
+        if key == pynput_keyboard.Key.delete:
+            for overlay in list (active_overlays):
+                overlay.close()
+                active_overlays.remove(overlay)
+    listener = pynput_keyboard.Listener(on_press=on_press)
+    listener.daemon = True
+    listener.start()
 
 class SettingsWindow(QWidget):
     def __init__(self):
@@ -332,6 +342,8 @@ def main():
 
     tray_icon.setContextMenu(tray_menu)
     tray_icon.show()
+
+    start_delete_listener()
     
     # try to load the saved config and auto-start
     try:

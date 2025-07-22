@@ -5,6 +5,7 @@ import threading
 import json
 import os
 import keyboard
+import pynput
 import requests
 import zipfile
 import shutil
@@ -18,6 +19,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtCore import Qt, QTimer, QPoint, QPropertyAnimation, QObject, pyqtSignal
+from pynput import keyboard as pynput_keyboard
 
 CONFIG_FILE = "overlay_config.json"
 active_overlays = []
@@ -119,8 +121,17 @@ class HotkeyListener(QObject):
     def __init__(self, hotkey):
         super().__init__()
         self.hotkey = hotkey
-        self.thread = threading.Thread(target=self.listen, daemon=True)
-        self.thread.start()
+        self.listener = pynput_keyboard.Listener(on_press=self.on_press)
+        self.listener.start()
+        # self.thread = threading.Thread(target=self.listen, daemon=True)
+        # self.thread.start()
+
+    def on_press(self, key):
+        try:
+            if hasattr(key, 'char') and key.char == self.hotkey:
+                self.trigger.emit()
+        except:
+            pass
 
     def listen(self):
         keyboard.add_hotkey(self.hotkey, lambda: self.trigger.emit())
@@ -246,7 +257,11 @@ class OverlayApp:
 
     def run(self):
         if self.listener:
-            keyboard.remove_hotkey(self.listener.hotkey)
+            try:
+                self.listener.listener.stop()
+            except Exception as e:
+                print(f"this program fucking sucks: {e}")
+            self.listener = None
 
         self.listener = HotkeyListener(self.hotkey)
         self.listener.trigger.connect(self.show_overlay)

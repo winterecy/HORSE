@@ -21,10 +21,10 @@ from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtCore import Qt, QTimer, QPoint, QPropertyAnimation, QObject, pyqtSignal
 from pynput import keyboard as pynput_keyboard
 
-CONFIG_FILE = "overlay_config.json"
+CONFIG_FILE = os.path.join(os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__), "overlay_config.json")
 active_overlays = []
 
-VERSION = "1.1.0"
+VERSION = "1.1.1"
 UPDATE_URL = "https://raw.githubusercontent.com/winterecy/HORSE/refs/heads/master/latest.json"
 
 # autorun on startup

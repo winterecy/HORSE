@@ -24,7 +24,7 @@ from pynput import keyboard as pynput_keyboard
 CONFIG_FILE = os.path.join(os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__), "overlay_config.json")
 active_overlays = []
 
-VERSION = "1.1.1"
+VERSION = "1.1.2"
 UPDATE_URL = "https://raw.githubusercontent.com/winterecy/HORSE/refs/heads/master/latest.json"
 
 # autorun on startup
@@ -90,13 +90,17 @@ class FadingOverlay(QLabel):
         self.setPixmap(pixmap)
         self.resize(pixmap.size())
 
-        screen_geometry = QApplication.primaryScreen().geometry()
+        screens = QApplication.screens()
+        screen = random.choice(screens)
+
+        screen_geometry = screen.geometry()
+
         screen_width, screen_height = screen_geometry.width(), screen_geometry.height()
         img_width = pixmap.width()
         img_height = pixmap.height()
 
-        x = random.randint(0, max(0, screen_width - img_width))
-        y = random.randint(0, max(0, screen_height - img_height))
+        x = random.randint(screen_geometry.x(), screen_geometry.x() + max(0, screen_width - img_width))
+        y = random.randint(screen_geometry.y(), screen_geometry.y() + max(0, screen_height - img_height))
         self.move(QPoint(x, y))
         self.show()
 

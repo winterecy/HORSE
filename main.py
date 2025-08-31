@@ -11,6 +11,7 @@ import zipfile
 import shutil
 import subprocess
 import winreg
+import pygame # why the fuck did i use python for this, what do you mean i need pygame to play mp3s
 
 from PyQt5.QtWidgets import (
     QApplication, QLabel, QWidget, QVBoxLayout, QHBoxLayout,
@@ -24,8 +25,10 @@ from pynput import keyboard as pynput_keyboard
 CONFIG_FILE = os.path.join(os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__), "overlay_config.json")
 active_overlays = []
 
-VERSION = "1.1.2"
+VERSION = "1.2.0"
 UPDATE_URL = "https://raw.githubusercontent.com/winterecy/HORSE/refs/heads/master/latest.json"
+
+pygame.mixer.init()
 
 # autorun on startup
 def startup(name, path):
@@ -167,6 +170,16 @@ class SettingsWindow(QWidget):
         img_row.addWidget(self.image_path_input)
         img_row.addWidget(browse_button)
         layout.addLayout(img_row)
+        layout.addWidget(QLabel("Image On Press"))
+
+        self.sound_path_input = QLineEdit("")
+        browse_sound_button = QPushButton("Browse")
+        browse_sound_button.clicked.connect(self.browse_sound)
+        sound_row = QHBoxLayout()
+        sound_row.addWidget(self.sound_path_input)
+        sound_row.addWidget(browse_sound_button)
+        layout.addLayout(sound_row)
+        layout.addWidget(QLabel("Sound On Press (WAV/MP3)"))
 
         self.duration_input = QDoubleSpinBox()
         self.duration_input.setRange(0.1, 60.0)
@@ -213,6 +226,11 @@ class SettingsWindow(QWidget):
         file_path, _ = QFileDialog.getOpenFileName(self, "Choose Image", "", "Images (*.png *.jpg *.bmp)")
         if file_path:
             self.image_path_input.setText(file_path)
+    
+    def browse_sound(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Choose Sound", "", "Audio Files (*.wav *.mp3)")
+        if file_path:
+            self.sound_path_input.setText(file_path)
 
     def start_overlay(self):
         image_path = self.image_path_input.text()
@@ -232,6 +250,7 @@ class SettingsWindow(QWidget):
     def save_config(self):
         config = {
             "image_path": self.image_path_input.text(),
+            "sound_path": self.sound_path_input.text(),
             "duration": self.duration_input.value(),
             "max_width": self.max_width_input.value(),
             "max_height": self.max_height_input.value(),
@@ -253,6 +272,7 @@ class SettingsWindow(QWidget):
                 config = json.load(f)
 
             self.image_path_input.setText(config.get("image_path", ""))
+            self.sound_path_input.setText(config.get("sound_path", ""))
             self.duration_input.setValue(config.get("duration", 5))
             self.max_width_input.setValue(config.get("max_width", 300))
             self.max_height_input.setValue(config.get("max_height", 300))
@@ -261,12 +281,13 @@ class SettingsWindow(QWidget):
             QMessageBox.warning(self, "Error", f"Failed to load config:\n{e}")
 
 class OverlayApp:
-    def __init__(self, image_path, duration, max_width, max_height, hotkey):
+    def __init__(self, image_path, duration, max_width, max_height, hotkey, sound_path=""):
         self.image_path = image_path
         self.duration = duration
         self.max_width = max_width
         self.max_height = max_height
         self.hotkey = hotkey
+        self.sound_path = sound_path
         self.listener = None
 
     def run(self):
@@ -283,6 +304,17 @@ class OverlayApp:
     def show_overlay(self):
         overlay = FadingOverlay(self.image_path, self.duration, self.max_width, self.max_height)
         active_overlays.append(overlay)
+        if self.sound_path and self.sound_path != "" and os.path.exists(self.sound_path):
+            threading.Thread(target=self.play_sound, args=(self.sound_path,), daemon=True).start()
+    
+    def play_sound(self, path):
+        try:
+            # print("hi")
+            sound = pygame.mixer.Sound(path)
+            sound.play()
+        except Exception as e:
+            print(f"fuck you pygame: {e}")
+
 
 def main():
     app = QApplication(sys.argv)
@@ -311,6 +343,7 @@ def main():
 
     def start_overlay():
         image_path = settings_window.image_path_input.text()
+        sound_path = settings_window.sound_path_input.text()
         duration = settings_window.duration_input.value()
         max_width = settings_window.max_width_input.value()
         max_height = settings_window.max_height_input.value()
@@ -321,6 +354,7 @@ def main():
             return
 
         overlay_app.image_path = image_path
+        overlay_app.sound_path = sound_path
         overlay_app.duration = duration
         overlay_app.max_width = max_width
         overlay_app.max_height = max_height
@@ -355,13 +389,15 @@ def main():
             config = json.load(f)
 
         image_path = config.get("image_path", "")
+        sound_path = config.get("sound_path", "")
         duration = config.get("duration", 5)
         max_width = config.get("max_width", 300)
         max_height = config.get("max_height", 300)
         hotkey = config.get("hotkey", "h").strip().lower()
 
         if image_path:
-            overlay_app = OverlayApp(image_path, duration, max_width, max_height, hotkey)
+            sound_path = config.get("sound_path", "")
+            overlay_app = OverlayApp(image_path, duration, max_width, max_height, hotkey, sound_path)
             overlay_app.run()
         else:
             settings_window.show()

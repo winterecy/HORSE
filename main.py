@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import winreg
 import pygame # why the fuck did i use python for this, what do you mean i need pygame to play mp3s
+import ctypes
 
 from PyQt5.QtWidgets import (
     QApplication, QLabel, QWidget, QVBoxLayout, QHBoxLayout,
@@ -77,6 +78,22 @@ def download_update(url):
     
     except Exception as e:
         QMessageBox.critical(None, "FUCK", str(e))
+
+def run_updater():
+    updater_path = os.path.abspath("updater.exe")
+    if not (os.path.exists(updater_path)):
+        QMessageBox.warning(None, "???", "failed to find updater.exe")
+        return
+
+    ctypes.windll.shell32.ShellExecuteW(
+        None,
+        "runas",
+        updater_path,
+        None,
+        None,
+        1
+    )
+    sys.exit()
 
 class FadingOverlay(QLabel):
     def __init__(self, image_path, duration, max_width, max_height):

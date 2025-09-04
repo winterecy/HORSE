@@ -11,8 +11,9 @@ import zipfile
 import shutil
 import subprocess
 import winreg
-import pygame # why the fuck did i use python for this, what do you mean i need pygame to play mp3s
+import pygame
 import ctypes
+import webbrowser
 
 from PyQt5.QtWidgets import (
     QApplication, QLabel, QWidget, QVBoxLayout, QHBoxLayout,
@@ -31,7 +32,24 @@ UPDATE_URL = "https://raw.githubusercontent.com/winterecy/HORSE/refs/heads/maste
 
 pygame.mixer.init()
 
-# autorun on startup
+def load_config_file():
+    if not os.path.exists(CONFIG_FILE):
+        return {}
+    try:
+        with open(CONFIG_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return {}
+
+
+def save_config_file(cfg):
+    try:
+        with open(CONFIG_FILE, "w") as f:
+            json.dump(cfg, f, indent=2)
+    except Exception as e:
+        print(f"Failed to save config: {e}")
+
+
 def startup(name, path):
     try:
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
@@ -41,6 +59,7 @@ def startup(name, path):
         winreg.CloseKey(key)
     except Exception as e:
         print(f"the horse was not able to run on startup: {e}")
+
 
 def update_check():
     try:
@@ -59,15 +78,16 @@ def update_check():
     except Exception as e:
         print(f"Update check failed: {e}")
 
+
 def download_update(url):
     try:
         r = requests.get(url, stream=True)
         with open("update_temp.zip", "wb") as f:
             shutil.copyfileobj(r.raw, f)
-        
+
         with zipfile.ZipFile("update_temp.zip", "r") as zip_ref:
             zip_ref.extractall("update_temp")
-        
+
         shutil.copy("update_temp/HORSE.exe", "HORSE_NEW.exe")
 
         subprocess.Popen(["updater.exe"], shell=True)
@@ -75,9 +95,10 @@ def download_update(url):
         os.remove("update_temp.zip")
         shutil.rmtree("update_temp")
         sys.exit()
-    
+
     except Exception as e:
         QMessageBox.critical(None, "FUCK", str(e))
+
 
 def run_updater():
     updater_path = os.path.abspath("updater.exe")
@@ -112,7 +133,6 @@ class FadingOverlay(QLabel):
 
         screens = QApplication.screens()
         screen = random.choice(screens)
-
         screen_geometry = screen.geometry()
 
         screen_width, screen_height = screen_geometry.width(), screen_geometry.height()
@@ -139,6 +159,7 @@ class FadingOverlay(QLabel):
             active_overlays.remove(self)
         self.close()
 
+
 class HotkeyListener(QObject):
     trigger = pyqtSignal()
 
@@ -147,8 +168,6 @@ class HotkeyListener(QObject):
         self.hotkey = hotkey
         self.listener = pynput_keyboard.Listener(on_press=self.on_press)
         self.listener.start()
-        # self.thread = threading.Thread(target=self.listen, daemon=True)
-        # self.thread.start()
 
     def on_press(self, key):
         try:
@@ -157,17 +176,14 @@ class HotkeyListener(QObject):
         except:
             pass
 
-    def listen(self):
-        keyboard.add_hotkey(self.hotkey, lambda: self.trigger.emit())
-        while True:
-            time.sleep(0.05)
 
 def start_delete_listener():
     def on_press(key):
         if key == pynput_keyboard.Key.delete:
-            for overlay in list (active_overlays):
+            for overlay in list(active_overlays):
                 overlay.close()
                 active_overlays.remove(overlay)
+
     listener = pynput_keyboard.Listener(on_press=on_press)
     listener.daemon = True
     listener.start()
@@ -243,7 +259,7 @@ class SettingsWindow(QWidget):
         file_path, _ = QFileDialog.getOpenFileName(self, "Choose Image", "", "Images (*.png *.jpg *.bmp)")
         if file_path:
             self.image_path_input.setText(file_path)
-    
+
     def browse_sound(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Choose Sound", "", "Audio Files (*.wav *.mp3)")
         if file_path:
@@ -265,37 +281,26 @@ class SettingsWindow(QWidget):
         self.overlay_app.run()
 
     def save_config(self):
-        config = {
+        config = load_config_file()
+        config.update({
             "image_path": self.image_path_input.text(),
             "sound_path": self.sound_path_input.text(),
             "duration": self.duration_input.value(),
             "max_width": self.max_width_input.value(),
             "max_height": self.max_height_input.value(),
             "hotkey": self.hotkey_input.text().strip().lower()
-        }
-
-        try:
-            with open(CONFIG_FILE, "w") as f:
-                json.dump(config, f)
-            QMessageBox.information(self, "Config Saved", "Settings saved successfully.")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to save config:\n{e}")
+        })
+        save_config_file(config)
+        QMessageBox.information(self, "Config Saved", "Settings saved successfully.")
 
     def load_config(self):
-        if not os.path.exists(CONFIG_FILE):
-            return
-        try:
-            with open(CONFIG_FILE, "r") as f:
-                config = json.load(f)
-
-            self.image_path_input.setText(config.get("image_path", ""))
-            self.sound_path_input.setText(config.get("sound_path", ""))
-            self.duration_input.setValue(config.get("duration", 5))
-            self.max_width_input.setValue(config.get("max_width", 300))
-            self.max_height_input.setValue(config.get("max_height", 300))
-            self.hotkey_input.setText(config.get("hotkey", "h"))
-        except Exception as e:
-            QMessageBox.warning(self, "Error", f"Failed to load config:\n{e}")
+        config = load_config_file()
+        self.image_path_input.setText(config.get("image_path", ""))
+        self.sound_path_input.setText(config.get("sound_path", ""))
+        self.duration_input.setValue(config.get("duration", 5))
+        self.max_width_input.setValue(config.get("max_width", 300))
+        self.max_height_input.setValue(config.get("max_height", 300))
+        self.hotkey_input.setText(config.get("hotkey", "h"))
 
 class OverlayApp:
     def __init__(self, image_path, duration, max_width, max_height, hotkey, sound_path=""):
@@ -312,7 +317,7 @@ class OverlayApp:
             try:
                 self.listener.listener.stop()
             except Exception as e:
-                print(f"this program fucking sucks: {e}")
+                print(f"this program fucking sucks (listener stop failed): {e}")
             self.listener = None
 
         self.listener = HotkeyListener(self.hotkey)
@@ -323,10 +328,9 @@ class OverlayApp:
         active_overlays.append(overlay)
         if self.sound_path and self.sound_path != "" and os.path.exists(self.sound_path):
             threading.Thread(target=self.play_sound, args=(self.sound_path,), daemon=True).start()
-    
+
     def play_sound(self, path):
         try:
-            # print("hi")
             sound = pygame.mixer.Sound(path)
             sound.play()
         except Exception as e:
@@ -339,6 +343,21 @@ def main():
 
     exe_path = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(__file__)
     startup("HORSE", exe_path)
+
+    config = load_config_file()
+
+    if "open_yurion" not in config:
+        reply = QMessageBox.question(
+            None,
+            "yurion.top",
+            "the horse REALLY likes https://yurion.top ... can she open it on startup?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        config["open_yurion"] = (reply == QMessageBox.Yes)
+        save_config_file(config)
+
+    if config.get("open_yurion", False):
+        webbrowser.open("https://yurion.top")
 
     def resource_path(relative_path):
         if getattr(sys, 'frozen', False):
@@ -353,7 +372,6 @@ def main():
     tray_icon = QSystemTrayIcon(icon, parent=app)
     tray_menu = QMenu()
     tray_icon.setVisible(True)
-    print("Tray icon visible?", tray_icon.isVisible())
 
     overlay_app = OverlayApp("", 0, 0, 0, "")
     settings_window = SettingsWindow()
@@ -377,7 +395,6 @@ def main():
         overlay_app.max_height = max_height
         overlay_app.hotkey = hotkey
         overlay_app.run()
-
         settings_window.hide()
 
     for btn in settings_window.findChildren(QPushButton):
@@ -394,17 +411,12 @@ def main():
     tray_menu.addAction(open_settings_action)
     tray_menu.addSeparator()
     tray_menu.addAction(quit_action)
-
     tray_icon.setContextMenu(tray_menu)
     tray_icon.show()
 
     start_delete_listener()
-    
-    # try to load the saved config and auto-start
-    try:
-        with open(CONFIG_FILE, "r") as f:
-            config = json.load(f)
 
+    try:
         image_path = config.get("image_path", "")
         sound_path = config.get("sound_path", "")
         duration = config.get("duration", 5)
@@ -413,18 +425,16 @@ def main():
         hotkey = config.get("hotkey", "h").strip().lower()
 
         if image_path:
-            sound_path = config.get("sound_path", "")
             overlay_app = OverlayApp(image_path, duration, max_width, max_height, hotkey, sound_path)
             overlay_app.run()
         else:
             settings_window.show()
-
     except Exception as e:
         print(f"Failed to load config: {e}")
         settings_window.show()
 
-
     sys.exit(app.exec())
+
 
 if __name__ == "__main__":
     main()

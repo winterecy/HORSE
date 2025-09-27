@@ -27,7 +27,7 @@ from pynput import keyboard as pynput_keyboard
 CONFIG_FILE = os.path.join(os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__), "overlay_config.json")
 active_overlays = []
 
-VERSION = "1.3.0"
+VERSION = "1.3.1"
 UPDATE_URL = "https://raw.githubusercontent.com/winterecy/HORSE/refs/heads/master/latest.json"
 
 pygame.mixer.init()
@@ -192,9 +192,11 @@ class SettingsWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(f"Overlay Settings - v{VERSION}")
-        self.setFixedSize(400, 340)
+        self.setFixedSize(420, 420)
 
-        layout = QVBoxLayout()
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(8)
 
         self.image_path_input = QLineEdit("")
         browse_button = QPushButton("Browse")
@@ -202,8 +204,8 @@ class SettingsWindow(QWidget):
         img_row = QHBoxLayout()
         img_row.addWidget(self.image_path_input)
         img_row.addWidget(browse_button)
-        layout.addLayout(img_row)
-        layout.addWidget(QLabel("Image On Press"))
+        main_layout.addLayout(img_row)
+        main_layout.addWidget(QLabel("Image On Press"))
 
         self.sound_path_input = QLineEdit("")
         browse_sound_button = QPushButton("Browse")
@@ -211,16 +213,16 @@ class SettingsWindow(QWidget):
         sound_row = QHBoxLayout()
         sound_row.addWidget(self.sound_path_input)
         sound_row.addWidget(browse_sound_button)
-        layout.addLayout(sound_row)
-        layout.addWidget(QLabel("Sound On Press (WAV/MP3)"))
+        main_layout.addLayout(sound_row)
+        main_layout.addWidget(QLabel("Sound On Press (WAV/MP3)"))
 
         self.duration_input = QDoubleSpinBox()
         self.duration_input.setRange(0.1, 60.0)
         self.duration_input.setSingleStep(0.1)
         self.duration_input.setDecimals(2)
         self.duration_input.setValue(5.0)
-        layout.addWidget(QLabel("Duration (seconds)"))
-        layout.addWidget(self.duration_input)
+        main_layout.addWidget(QLabel("Duration (seconds)"))
+        main_layout.addWidget(self.duration_input)
 
         self.max_width_input = QSpinBox()
         self.max_width_input.setRange(10, 1000)
@@ -230,14 +232,14 @@ class SettingsWindow(QWidget):
         self.max_height_input.setRange(10, 1000)
         self.max_height_input.setValue(300)
 
-        layout.addWidget(QLabel("Max Width"))
-        layout.addWidget(self.max_width_input)
-        layout.addWidget(QLabel("Max Height"))
-        layout.addWidget(self.max_height_input)
+        main_layout.addWidget(QLabel("Max Width"))
+        main_layout.addWidget(self.max_width_input)
+        main_layout.addWidget(QLabel("Max Height"))
+        main_layout.addWidget(self.max_height_input)
 
         self.hotkey_input = QLineEdit("h")
-        layout.addWidget(QLabel("Hotkey"))
-        layout.addWidget(self.hotkey_input)
+        main_layout.addWidget(QLabel("Hotkey"))
+        main_layout.addWidget(self.hotkey_input)
 
         button_row = QHBoxLayout()
         save_button = QPushButton("Save Config")
@@ -246,13 +248,30 @@ class SettingsWindow(QWidget):
         load_button.clicked.connect(self.load_config)
         button_row.addWidget(save_button)
         button_row.addWidget(load_button)
-        layout.addLayout(button_row)
+        main_layout.addLayout(button_row)
 
         start_button = QPushButton("Start Overlay")
         start_button.clicked.connect(self.start_overlay)
-        layout.addWidget(start_button)
+        main_layout.addWidget(start_button)
 
-        self.setLayout(layout)
+        flag_layout = QHBoxLayout()
+        flag_layout.addStretch(1)
+
+
+        flag_label = QLabel()
+        
+        flag_path = os.path.join(os.path.dirname(__file__), "lesbian_flag.png")
+        flag_pixmap = QPixmap(flag_path)
+        print(flag_pixmap.isNull())
+        if not flag_pixmap.isNull():
+            flag_pixmap = flag_pixmap.scaled(64, 40, 
+                                             Qt.AspectRatioMode.KeepAspectRatio, 
+                                             Qt.TransformationMode.SmoothTransformation)
+            flag_label.setPixmap(flag_pixmap)
+        flag_layout.addWidget(flag_label)
+        main_layout.addLayout(flag_layout)
+
+        self.setLayout(main_layout)
         self.load_config()
 
     def browse_image(self):
@@ -356,6 +375,13 @@ def main():
         config["open_yurion"] = (reply == QMessageBox.Yes)
         save_config_file(config)
 
+    QMessageBox.information(
+        None,
+        "i love you",
+        "i love you",
+        QMessageBox.Ok
+    )
+
     if config.get("open_yurion", False):
         webbrowser.open("https://yurion.top")
 
@@ -432,6 +458,7 @@ def main():
     except Exception as e:
         print(f"Failed to load config: {e}")
         settings_window.show()
+
 
     sys.exit(app.exec())
 

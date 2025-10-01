@@ -23,14 +23,20 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QPixmap, QIcon
 from PyQt5.QtCore import Qt, QTimer, QPoint, QPropertyAnimation, QObject, pyqtSignal
 from pynput import keyboard as pynput_keyboard
+from packaging.version import Version
 
 CONFIG_FILE = os.path.join(os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__), "overlay_config.json")
 active_overlays = []
 
-VERSION = "1.3.1"
+VERSION = "1.4.0"
 UPDATE_URL = "https://raw.githubusercontent.com/winterecy/HORSE/refs/heads/master/latest.json"
 
 pygame.mixer.init()
+
+def resource_path(relative_path):
+    if getattr(sys, 'frozen', False):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
 
 def load_config_file():
     if not os.path.exists(CONFIG_FILE):
@@ -69,7 +75,7 @@ def update_check():
             latest_version = latest_info.get("version")
             download_url = latest_info.get("url")
 
-            if latest_version and latest_version > VERSION:
+            if latest_version and Version(latest_version) > Version(VERSION):
                 reply = QMessageBox.question(None, "please update me",
                                              f"The HORSE is gungry and needs updated to version {latest_version}. install it please?",
                                              QMessageBox.Yes | QMessageBox.No)
@@ -177,12 +183,16 @@ class HotkeyListener(QObject):
             pass
 
 
-def start_delete_listener():
+class OverlayController(QObject):
+    clear_overlays_signal = pyqtSignal()
+
+    def __init__(self):
+        super().__init__()
+
+def start_delete_listener(controller: "OverlayController"):
     def on_press(key):
         if key == pynput_keyboard.Key.delete:
-            for overlay in list(active_overlays):
-                overlay.close()
-                active_overlays.remove(overlay)
+            controller.clear_overlays_signal.emit()
 
     listener = pynput_keyboard.Listener(on_press=on_press)
     listener.daemon = True
@@ -260,7 +270,7 @@ class SettingsWindow(QWidget):
 
         flag_label = QLabel()
         
-        flag_path = os.path.join(os.path.dirname(__file__), "lesbian_flag.png")
+        flag_path = resource_path("lesbian_flag.png")
         flag_pixmap = QPixmap(flag_path)
         print(flag_pixmap.isNull())
         if not flag_pixmap.isNull():
@@ -385,11 +395,6 @@ def main():
     if config.get("open_yurion", False):
         webbrowser.open("https://yurion.top")
 
-    def resource_path(relative_path):
-        if getattr(sys, 'frozen', False):
-            return os.path.join(sys._MEIPASS, relative_path)
-        return os.path.join(os.path.abspath("."), relative_path)
-
     icon_path = resource_path("horse_button.png")
     icon = QIcon(icon_path)
     if icon.isNull():
@@ -440,7 +445,16 @@ def main():
     tray_icon.setContextMenu(tray_menu)
     tray_icon.show()
 
-    start_delete_listener()
+    controller = OverlayController()
+
+    def clear_overlays():
+        for overlay in list(active_overlays):
+            overlay.close()
+            if overlay in active_overlays:
+                active_overlays.remove(overlay)
+
+    controller.clear_overlays_signal.connect(clear_overlays)
+    start_delete_listener(controller)
 
     try:
         image_path = config.get("image_path", "")

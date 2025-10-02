@@ -14,6 +14,7 @@ import winreg
 import pygame
 import ctypes
 import webbrowser
+import platform
 
 from PyQt5.QtWidgets import (
     QApplication, QLabel, QWidget, QVBoxLayout, QHBoxLayout,
@@ -28,7 +29,7 @@ from packaging.version import Version
 CONFIG_FILE = os.path.join(os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__), "overlay_config.json")
 active_overlays = []
 
-VERSION = "1.4.0"
+VERSION = "1.4.2"
 UPDATE_URL = "https://raw.githubusercontent.com/winterecy/HORSE/refs/heads/master/latest.json"
 
 pygame.mixer.init()
@@ -368,7 +369,12 @@ class OverlayApp:
 
 def main():
     app = QApplication(sys.argv)
-    update_check()
+    
+    update_flag_file = "update_complete.flag"
+    if os.path.exists(update_flag_file):
+        os.remove(update_flag_file)
+    else:
+        update_check()
 
     exe_path = sys.executable if getattr(sys, 'frozen', False) else os.path.abspath(__file__)
     startup("HORSE", exe_path)
@@ -385,12 +391,15 @@ def main():
         config["open_yurion"] = (reply == QMessageBox.Yes)
         save_config_file(config)
 
-    QMessageBox.information(
-        None,
-        "i love you",
-        "i love you",
-        QMessageBox.Ok
-    )
+    # i love you emily
+    pc_name = os.getenv("COMPUTERNAME") or platform.node()
+    if pc_name == "DESKTOP-MRFAJ19":
+            QMessageBox.information(
+            None,
+            "i love you",
+            "i love you emily",
+            QMessageBox.Ok
+        )
 
     if config.get("open_yurion", False):
         webbrowser.open("https://yurion.top")

@@ -25,6 +25,9 @@ def main():
 
         shutil.move("HORSE_NEW.exe", "HORSE.exe")
 
+        with open("update_complete.flag", "w") as f:
+            f.write("update_complete")
+
         subprocess.Popen(["HORSE.exe"], shell=True)
 
     except Exception as e:

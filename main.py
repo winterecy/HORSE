@@ -21,7 +21,7 @@ from PyQt5.QtWidgets import (
     QLineEdit, QPushButton, QFileDialog, QSpinBox, QDoubleSpinBox, QMessageBox, QAction,
     QSystemTrayIcon, QMenu
 )
-from PyQt5.QtGui import QPixmap, QIcon
+from PyQt5.QtGui import QPixmap, QIcon, QPalette, QColor
 from PyQt5.QtCore import Qt, QTimer, QPoint, QPropertyAnimation, QObject, pyqtSignal
 from pynput import keyboard as pynput_keyboard
 from packaging.version import Version
@@ -33,6 +33,63 @@ VERSION = "1.4.3"
 UPDATE_URL = "https://raw.githubusercontent.com/winterecy/HORSE/refs/heads/master/latest.json"
 
 pygame.mixer.init()
+
+def apply_theme(app: QApplication):
+	app.setStyle("Fusion")
+
+	palette = QPalette()
+	bg = QColor(20, 22, 24)
+	panel = QColor(32, 35, 38)
+	alt = QColor(28, 30, 33)
+	text = QColor(220, 220, 220)
+	muted = QColor(170, 176, 182)
+	accent = QColor(90, 157, 255)
+	accent_hover = QColor(110, 172, 255)
+	warn = QColor(255, 88, 88)
+
+	palette.setColor(QPalette.Window, bg)
+	palette.setColor(QPalette.WindowText, text)
+	palette.setColor(QPalette.Base, alt)
+	palette.setColor(QPalette.AlternateBase, panel)
+	palette.setColor(QPalette.ToolTipBase, panel)
+	palette.setColor(QPalette.ToolTipText, text)
+	palette.setColor(QPalette.Text, text)
+	palette.setColor(QPalette.Button, panel)
+	palette.setColor(QPalette.ButtonText, text)
+	palette.setColor(QPalette.BrightText, warn)
+	palette.setColor(QPalette.Highlight, accent)
+	palette.setColor(QPalette.HighlightedText, QColor(255, 255, 255))
+	palette.setColor(QPalette.PlaceholderText, muted)
+	palette.setColor(QPalette.Disabled, QPalette.Text, muted)
+	palette.setColor(QPalette.Disabled, QPalette.ButtonText, muted)
+
+	app.setPalette(palette)
+
+	app.setStyleSheet(
+		"""
+		QWidget { background-color: #141618; color: #DCDCDC; font-size: 13px; }
+		QLabel { color: #DCDCDC; }
+		QLineEdit, QSpinBox, QDoubleSpinBox {
+			background-color: #1C1E21; color: #E6E6E6; border: 1px solid #2A2E33; border-radius: 6px; padding: 6px 8px;
+		}
+		QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus { border: 1px solid #5A9DFF; }
+		QPushButton {
+			background-color: #262A2F; color: #E6E6E6; border: 1px solid #323840; border-radius: 8px; padding: 8px 12px; font-weight: 600;
+		}
+		QPushButton:hover { background-color: #2B3036; border-color: #3A424C; }
+		QPushButton:pressed { background-color: #23272C; }
+		QPushButton:default { background-color: #5A9DFF; border: none; color: #0E1113; }
+		QPushButton:default:hover { background-color: #6EACFF; }
+		QMenu { background-color: #1F2327; color: #E6E6E6; border: 1px solid #2A2E33; }
+		QMenu::item { padding: 6px 18px; }
+		QMenu::item:selected { background-color: #2A2F35; }
+		QToolTip { background-color: #1F2327; color: #FFFFFF; border: 1px solid #2A2E33; }
+		QScrollBar:vertical { background: #141618; width: 10px; margin: 0; }
+		QScrollBar::handle:vertical { background: #2B3036; min-height: 20px; border-radius: 5px; }
+		QScrollBar::handle:vertical:hover { background: #343A41; }
+		QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+		"""
+	)
 
 def resource_path(relative_path):
     if getattr(sys, 'frozen', False):
@@ -203,7 +260,8 @@ class SettingsWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(f"Overlay Settings - v{VERSION}")
-        self.setFixedSize(420, 420)
+        self.setMinimumSize(420, 420)
+        self.resize(520, 520)
 
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(10, 10, 10, 10)
@@ -369,6 +427,7 @@ class OverlayApp:
 
 def main():
     app = QApplication(sys.argv)
+    apply_theme(app)
     
     update_flag_file = "update_complete.flag"
     if os.path.exists(update_flag_file):

@@ -19,7 +19,7 @@ import platform
 from PyQt5.QtWidgets import (
     QApplication, QLabel, QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QPushButton, QFileDialog, QSpinBox, QDoubleSpinBox, QMessageBox, QAction,
-    QSystemTrayIcon, QMenu, QFormLayout
+    QSystemTrayIcon, QMenu, QFormLayout, QSlider
 )
 from PyQt5.QtGui import QPixmap, QIcon, QPalette, QColor
 from PyQt5.QtCore import Qt, QTimer, QPoint, QPropertyAnimation, QObject, pyqtSignal
@@ -288,12 +288,17 @@ class SettingsWindow(QWidget):
         sound_row.addWidget(browse_sound_button)
         form.addRow("Sound On Press (WAV/MP3)", sound_row)
 
-        self.duration_input = QDoubleSpinBox()
-        self.duration_input.setRange(0.1, 60.0)
-        self.duration_input.setSingleStep(0.1)
-        self.duration_input.setDecimals(2)
-        self.duration_input.setValue(5.0)
-        form.addRow("Duration (seconds)", self.duration_input)
+        duration_container = QHBoxLayout()
+        self.duration_slider = QSlider(Qt.Horizontal)
+        self.duration_slider.setRange(1, 600)
+        self.duration_slider.setValue(50)
+        self.duration_slider.setTickPosition(QSlider.TicksBelow)
+        self.duration_slider.setTickInterval(50)
+        self.duration_label = QLabel("5.0s")
+        self.duration_slider.valueChanged.connect(self.update_duration_label)
+        duration_container.addWidget(self.duration_slider)
+        duration_container.addWidget(self.duration_label)
+        form.addRow("Duration (seconds)", duration_container)
 
         self.max_width_input = QSpinBox()
         self.max_width_input.setRange(10, 1000)
@@ -370,6 +375,10 @@ class SettingsWindow(QWidget):
         self._preview_channel = None
         self._preview_sound = None
 
+    def update_duration_label(self, value):
+        duration = value / 10.0
+        self.duration_label.setText(f"{duration:.1f}s")
+
     def browse_image(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Choose Image", "", "Images (*.png *.jpg *.bmp)")
         if file_path:
@@ -422,7 +431,7 @@ class SettingsWindow(QWidget):
 
     def start_overlay(self):
         image_path = self.image_path_input.text()
-        duration = self.duration_input.value()
+        duration = self.duration_slider.value() / 10.0
         max_width = self.max_width_input.value()
         max_height = self.max_height_input.value()
         hotkey = self.hotkey_input.text().strip().lower()
@@ -440,7 +449,7 @@ class SettingsWindow(QWidget):
         config.update({
             "image_path": self.image_path_input.text(),
             "sound_path": self.sound_path_input.text(),
-            "duration": self.duration_input.value(),
+            "duration": self.duration_slider.value() / 10.0,
             "max_width": self.max_width_input.value(),
             "max_height": self.max_height_input.value(),
             "hotkey": self.hotkey_input.text().strip().lower()
@@ -452,7 +461,9 @@ class SettingsWindow(QWidget):
         config = load_config_file()
         self.image_path_input.setText(config.get("image_path", ""))
         self.sound_path_input.setText(config.get("sound_path", ""))
-        self.duration_input.setValue(config.get("duration", 5))
+        duration_value = int(config.get("duration", 5.0) * 10)
+        self.duration_slider.setValue(duration_value)
+        self.update_duration_label(duration_value)
         self.max_width_input.setValue(config.get("max_width", 300))
         self.max_height_input.setValue(config.get("max_height", 300))
         self.hotkey_input.setText(config.get("hotkey", "h"))
@@ -535,7 +546,7 @@ def main():
     def start_overlay():
         image_path = settings_window.image_path_input.text()
         sound_path = settings_window.sound_path_input.text()
-        duration = settings_window.duration_input.value()
+        duration = settings_window.duration_slider.value() / 10.0
         max_width = settings_window.max_width_input.value()
         max_height = settings_window.max_height_input.value()
         hotkey = settings_window.hotkey_input.text().strip().lower()
@@ -584,7 +595,7 @@ def main():
     try:
         image_path = config.get("image_path", "")
         sound_path = config.get("sound_path", "")
-        duration = config.get("duration", 5)
+        duration = config.get("duration", 5.0)
         max_width = config.get("max_width", 300)
         max_height = config.get("max_height", 300)
         hotkey = config.get("hotkey", "h").strip().lower()

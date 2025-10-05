@@ -19,7 +19,7 @@ import platform
 from PyQt5.QtWidgets import (
     QApplication, QLabel, QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QPushButton, QFileDialog, QSpinBox, QDoubleSpinBox, QMessageBox, QAction,
-    QSystemTrayIcon, QMenu, QFormLayout, QSlider
+    QSystemTrayIcon, QMenu, QFormLayout, QSlider, QFrame
 )
 from PyQt5.QtGui import QPixmap, QIcon, QPalette, QColor
 from PyQt5.QtCore import Qt, QTimer, QPoint, QPropertyAnimation, QObject, pyqtSignal
@@ -310,8 +310,46 @@ class SettingsWindow(QWidget):
         self.max_height_input.setValue(300)
         form.addRow("Max Height", self.max_height_input)
 
-        self.hotkey_input = QLineEdit("h")
-        form.addRow("Hotkey", self.hotkey_input)
+        hotkey_container = QHBoxLayout()
+        
+        self.hotkey_display = QLabel("H")
+        self.hotkey_display.setStyleSheet("""
+            QLabel {
+                border: 2px solid #5A9DFF;
+                border-radius: 6px;
+                padding: 8px 12px;
+                background-color: #1C1E21;
+                color: #5A9DFF;
+                font-weight: bold;
+                font-size: 14px;
+                min-width: 60px;
+            }
+        """)
+        self.hotkey_display.setAlignment(Qt.AlignCenter)
+        
+        self.record_hotkey_btn = QPushButton("Record")
+        self.record_hotkey_btn.setStyleSheet("""
+            QPushButton {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+        """)
+        self.record_hotkey_btn.clicked.connect(self.start_hotkey_recording)
+        
+        self.clear_hotkey_btn = QPushButton("Clear")
+        self.clear_hotkey_btn.setStyleSheet("""
+            QPushButton {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+        """)
+        self.clear_hotkey_btn.clicked.connect(self.clear_hotkey)
+        
+        hotkey_container.addWidget(self.hotkey_display)
+        hotkey_container.addWidget(self.record_hotkey_btn)
+        hotkey_container.addWidget(self.clear_hotkey_btn)
+        
+        form.addRow("Hotkey", hotkey_container)
 
         left_col.addLayout(form)
 
@@ -341,7 +379,7 @@ class SettingsWindow(QWidget):
         self.image_path_input.textChanged.connect(self.update_image_preview)
 
         sound_controls = QHBoxLayout()
-        self.play_btn = QPushButton("Play Preview")
+        self.play_btn = QPushButton("Play Sound")
         self.stop_btn = QPushButton("Stop")
         self.play_btn.clicked.connect(self.play_preview_sound)
         self.stop_btn.clicked.connect(self.stop_preview_sound)
@@ -374,6 +412,11 @@ class SettingsWindow(QWidget):
         # runtime handle for preview sound
         self._preview_channel = None
         self._preview_sound = None
+        
+        # hotkey recording state
+        self._hotkey_recording = False
+        self._hotkey_listener = None
+        self._current_hotkey = "h"
 
     def update_duration_label(self, value):
         duration = value / 10.0
@@ -434,7 +477,7 @@ class SettingsWindow(QWidget):
         duration = self.duration_slider.value() / 10.0
         max_width = self.max_width_input.value()
         max_height = self.max_height_input.value()
-        hotkey = self.hotkey_input.text().strip().lower()
+        hotkey = self._current_hotkey.lower()
 
         if not image_path:
             QMessageBox.warning(self, "Missing Image", "Please select an image.")
@@ -452,7 +495,7 @@ class SettingsWindow(QWidget):
             "duration": self.duration_slider.value() / 10.0,
             "max_width": self.max_width_input.value(),
             "max_height": self.max_height_input.value(),
-            "hotkey": self.hotkey_input.text().strip().lower()
+            "hotkey": self._current_hotkey.lower()
         })
         save_config_file(config)
         QMessageBox.information(self, "Config Saved", "Settings saved successfully.")
@@ -466,7 +509,118 @@ class SettingsWindow(QWidget):
         self.update_duration_label(duration_value)
         self.max_width_input.setValue(config.get("max_width", 300))
         self.max_height_input.setValue(config.get("max_height", 300))
-        self.hotkey_input.setText(config.get("hotkey", "h"))
+        hotkey = config.get("hotkey", "h")
+        self._current_hotkey = hotkey.upper()
+        self.update_hotkey_display()
+
+    def start_hotkey_recording(self):
+        """Start recording a new hotkey combination."""
+        if self._hotkey_recording:
+            self.stop_hotkey_recording()
+            return
+        
+        self._hotkey_recording = True
+        self.record_hotkey_btn.setText("Recording...")
+        self.record_hotkey_btn.setStyleSheet("""
+            QPushButton {
+                padding: 6px 12px;
+                font-size: 12px;
+                background-color: #FF5858;
+                color: white;
+            }
+        """)
+        self.hotkey_display.setText("Press keys...")
+        
+        self._hotkey_listener = pynput_keyboard.Listener(
+            on_press=self.on_hotkey_record_press,
+            on_release=self.on_hotkey_record_release
+        )
+        self._hotkey_listener.start()
+        
+        QTimer.singleShot(10000, self.stop_hotkey_recording)
+
+    def stop_hotkey_recording(self):
+        """Stop recording hotkey and update display."""
+        self._hotkey_recording = False
+        if self._hotkey_listener:
+            try:
+                self._hotkey_listener.stop()
+            except:
+                pass
+            self._hotkey_listener = None
+        
+        self.record_hotkey_btn.setText("Record")
+        self.record_hotkey_btn.setStyleSheet("""
+            QPushButton {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+        """)
+        self.update_hotkey_display()
+
+    def on_hotkey_record_press(self, key):
+        """Handle key press during hotkey recording."""
+        if not self._hotkey_recording:
+            return
+        
+        try:
+            key_str = self.key_to_display_string(key)
+            if key_str:
+                self._current_hotkey = key_str
+                self.update_hotkey_display()
+                QTimer.singleShot(100, self.stop_hotkey_recording)
+        except Exception as e:
+            print(f"Hotkey recording error: {e}")
+
+    def on_hotkey_record_release(self, key):
+        """Handle key release during hotkey recording."""
+        pass
+
+    def key_to_display_string(self, key):
+        """Convert pynput key to display string."""
+        if hasattr(key, 'char') and key.char is not None:
+            return key.char.upper()
+        elif hasattr(key, 'name'):
+            name = key.name.lower()
+            special_keys = {
+                'space': 'SPACE',
+                'enter': 'ENTER', 
+                'tab': 'TAB',
+                'esc': 'ESC',
+                'backspace': 'BACKSPACE',
+                'delete': 'DELETE',
+                'up': '↑',
+                'down': '↓', 
+                'left': '←',
+                'right': '→',
+                'home': 'HOME',
+                'end': 'END',
+                'page_up': 'PG UP',
+                'page_down': 'PG DN'
+            }
+            if name in special_keys:
+                return special_keys[name]
+            elif name.startswith('f') and len(name) <= 3:
+                return name.upper()
+            elif name.startswith('ctrl'):
+                return 'CTRL'
+            elif name.startswith('alt'):
+                return 'ALT'
+            elif name.startswith('shift'):
+                return 'SHIFT'
+            elif name.startswith('cmd') or name.startswith('super'):
+                return 'CMD'
+        return None
+
+    def update_hotkey_display(self):
+        """Update the hotkey display label."""
+        self.hotkey_display.setText(self._current_hotkey)
+
+    def clear_hotkey(self):
+        """Clear the current hotkey."""
+        self._current_hotkey = ""
+        self.hotkey_display.setText("None")
+        self.stop_hotkey_recording()
 
 class OverlayApp:
     def __init__(self, image_path, duration, max_width, max_height, hotkey, sound_path=""):
@@ -549,7 +703,7 @@ def main():
         duration = settings_window.duration_slider.value() / 10.0
         max_width = settings_window.max_width_input.value()
         max_height = settings_window.max_height_input.value()
-        hotkey = settings_window.hotkey_input.text().strip().lower()
+        hotkey = settings_window._current_hotkey.lower()
 
         if not image_path:
             QMessageBox.warning(settings_window, "Missing Image", "Please select an image.")

@@ -19,7 +19,7 @@ import platform
 from PyQt5.QtWidgets import (
     QApplication, QLabel, QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QPushButton, QFileDialog, QSpinBox, QDoubleSpinBox, QMessageBox, QAction,
-    QSystemTrayIcon, QMenu
+    QSystemTrayIcon, QMenu, QFormLayout
 )
 from PyQt5.QtGui import QPixmap, QIcon, QPalette, QColor
 from PyQt5.QtCore import Qt, QTimer, QPoint, QPropertyAnimation, QObject, pyqtSignal
@@ -263,9 +263,14 @@ class SettingsWindow(QWidget):
         self.setMinimumSize(420, 420)
         self.resize(520, 520)
 
-        main_layout = QVBoxLayout()
+        main_layout = QHBoxLayout()
         main_layout.setContentsMargins(10, 10, 10, 10)
-        main_layout.setSpacing(8)
+        main_layout.setSpacing(12)
+
+        left_col = QVBoxLayout()
+        form = QFormLayout()
+        form.setLabelAlignment(Qt.AlignRight)
+        form.setFormAlignment(Qt.AlignTop)
 
         self.image_path_input = QLineEdit("")
         browse_button = QPushButton("Browse")
@@ -273,8 +278,7 @@ class SettingsWindow(QWidget):
         img_row = QHBoxLayout()
         img_row.addWidget(self.image_path_input)
         img_row.addWidget(browse_button)
-        main_layout.addLayout(img_row)
-        main_layout.addWidget(QLabel("Image On Press"))
+        form.addRow("Image On Press", img_row)
 
         self.sound_path_input = QLineEdit("")
         browse_sound_button = QPushButton("Browse")
@@ -282,33 +286,29 @@ class SettingsWindow(QWidget):
         sound_row = QHBoxLayout()
         sound_row.addWidget(self.sound_path_input)
         sound_row.addWidget(browse_sound_button)
-        main_layout.addLayout(sound_row)
-        main_layout.addWidget(QLabel("Sound On Press (WAV/MP3)"))
+        form.addRow("Sound On Press (WAV/MP3)", sound_row)
 
         self.duration_input = QDoubleSpinBox()
         self.duration_input.setRange(0.1, 60.0)
         self.duration_input.setSingleStep(0.1)
         self.duration_input.setDecimals(2)
         self.duration_input.setValue(5.0)
-        main_layout.addWidget(QLabel("Duration (seconds)"))
-        main_layout.addWidget(self.duration_input)
+        form.addRow("Duration (seconds)", self.duration_input)
 
         self.max_width_input = QSpinBox()
         self.max_width_input.setRange(10, 1000)
         self.max_width_input.setValue(300)
+        form.addRow("Max Width", self.max_width_input)
 
         self.max_height_input = QSpinBox()
         self.max_height_input.setRange(10, 1000)
         self.max_height_input.setValue(300)
-
-        main_layout.addWidget(QLabel("Max Width"))
-        main_layout.addWidget(self.max_width_input)
-        main_layout.addWidget(QLabel("Max Height"))
-        main_layout.addWidget(self.max_height_input)
+        form.addRow("Max Height", self.max_height_input)
 
         self.hotkey_input = QLineEdit("h")
-        main_layout.addWidget(QLabel("Hotkey"))
-        main_layout.addWidget(self.hotkey_input)
+        form.addRow("Hotkey", self.hotkey_input)
+
+        left_col.addLayout(form)
 
         button_row = QHBoxLayout()
         save_button = QPushButton("Save Config")
@@ -317,41 +317,108 @@ class SettingsWindow(QWidget):
         load_button.clicked.connect(self.load_config)
         button_row.addWidget(save_button)
         button_row.addWidget(load_button)
-        main_layout.addLayout(button_row)
+        left_col.addLayout(button_row)
 
         start_button = QPushButton("Start Overlay")
         start_button.clicked.connect(self.start_overlay)
-        main_layout.addWidget(start_button)
+        left_col.addWidget(start_button)
+        left_col.addStretch(1)
+
+        right_col = QVBoxLayout()
+        preview_label = QLabel("Preview")
+        right_col.addWidget(preview_label)
+
+        self.image_preview = QLabel()
+        self.image_preview.setFixedSize(200, 150)
+        self.image_preview.setAlignment(Qt.AlignCenter)
+        self.image_preview.setStyleSheet("border: 1px solid #2A2E33; border-radius: 6px; background-color: #1C1E21;")
+        right_col.addWidget(self.image_preview)
+        self.image_path_input.textChanged.connect(self.update_image_preview)
+
+        sound_controls = QHBoxLayout()
+        self.play_btn = QPushButton("Play Preview")
+        self.stop_btn = QPushButton("Stop")
+        self.play_btn.clicked.connect(self.play_preview_sound)
+        self.stop_btn.clicked.connect(self.stop_preview_sound)
+        self.stop_btn.setEnabled(False)
+        sound_controls.addWidget(self.play_btn)
+        sound_controls.addWidget(self.stop_btn)
+        right_col.addLayout(sound_controls)
+        right_col.addStretch(1)
 
         flag_layout = QHBoxLayout()
         flag_layout.addStretch(1)
-
-
         flag_label = QLabel()
-        
         flag_path = resource_path("lesbian_flag.png")
         flag_pixmap = QPixmap(flag_path)
         print(flag_pixmap.isNull())
         if not flag_pixmap.isNull():
-            flag_pixmap = flag_pixmap.scaled(64, 40, 
-                                             Qt.AspectRatioMode.KeepAspectRatio, 
+            flag_pixmap = flag_pixmap.scaled(64, 40,
+                                             Qt.AspectRatioMode.KeepAspectRatio,
                                              Qt.TransformationMode.SmoothTransformation)
             flag_label.setPixmap(flag_pixmap)
         flag_layout.addWidget(flag_label)
-        main_layout.addLayout(flag_layout)
+        right_col.addLayout(flag_layout)
 
+        main_layout.addLayout(left_col, 2)
+        main_layout.addLayout(right_col, 1)
         self.setLayout(main_layout)
         self.load_config()
+        self.update_image_preview()
+
+        # runtime handle for preview sound
+        self._preview_channel = None
+        self._preview_sound = None
 
     def browse_image(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Choose Image", "", "Images (*.png *.jpg *.bmp)")
         if file_path:
             self.image_path_input.setText(file_path)
+            self.update_image_preview()
 
     def browse_sound(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Choose Sound", "", "Audio Files (*.wav *.mp3)")
         if file_path:
             self.sound_path_input.setText(file_path)
+
+    def update_image_preview(self):
+        path = self.image_path_input.text().strip()
+        if not path or not os.path.exists(path):
+            self.image_preview.setPixmap(QPixmap())
+            self.image_preview.setText("No Image")
+            return
+        pix = QPixmap(path)
+        if pix.isNull():
+            self.image_preview.setPixmap(QPixmap())
+            self.image_preview.setText("Invalid Image")
+            return
+        target = self.image_preview.size()
+        scaled = pix.scaled(target.width(), target.height(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.image_preview.setText("")
+        self.image_preview.setPixmap(scaled)
+
+    def play_preview_sound(self):
+        path = self.sound_path_input.text().strip()
+        if not path or not os.path.exists(path):
+            QMessageBox.warning(self, "Sound", "Please select a valid sound file.")
+            return
+        try:
+            self.stop_preview_sound()
+            self._preview_sound = pygame.mixer.Sound(path)
+            self._preview_channel = self._preview_sound.play()
+            self.stop_btn.setEnabled(True)
+        except Exception as e:
+            QMessageBox.warning(self, "Sound", f"Failed to play sound: {e}")
+
+    def stop_preview_sound(self):
+        try:
+            if self._preview_channel is not None:
+                self._preview_channel.stop()
+            self._preview_channel = None
+            self._preview_sound = None
+        finally:
+            if hasattr(self, 'stop_btn'):
+                self.stop_btn.setEnabled(False)
 
     def start_overlay(self):
         image_path = self.image_path_input.text()

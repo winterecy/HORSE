@@ -1,11 +1,8 @@
 import sys
 import random
-import time
 import threading
 import json
 import os
-import keyboard
-import pynput
 import requests
 import zipfile
 import shutil
@@ -14,82 +11,227 @@ import winreg
 import pygame
 import ctypes
 import webbrowser
-import platform
 
 from PyQt5.QtWidgets import (
     QApplication, QLabel, QWidget, QVBoxLayout, QHBoxLayout,
     QLineEdit, QPushButton, QFileDialog, QSpinBox, QDoubleSpinBox, QMessageBox, QAction,
-    QSystemTrayIcon, QMenu, QFormLayout, QSlider, QFrame
+    QSystemTrayIcon, QMenu, QFormLayout, QSlider, QFrame, QGroupBox, QScrollArea
 )
-from PyQt5.QtGui import QPixmap, QIcon, QPalette, QColor
-from PyQt5.QtCore import Qt, QTimer, QPoint, QPropertyAnimation, QObject, pyqtSignal
+from PyQt5.QtGui import QPixmap, QIcon, QPalette, QColor, QFont
+from PyQt5.QtCore import Qt, QTimer, QPoint, QPropertyAnimation, QObject, pyqtSignal, QSize
 from pynput import keyboard as pynput_keyboard
 from packaging.version import Version
 
 CONFIG_FILE = os.path.join(os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__), "overlay_config.json")
 active_overlays = []
 
-VERSION = "1.4.3"
+VERSION = "1.5.0"
 UPDATE_URL = "https://raw.githubusercontent.com/winterecy/HORSE/refs/heads/master/latest.json"
 
 pygame.mixer.init()
 
 def apply_theme(app: QApplication):
-	app.setStyle("Fusion")
+    app.setStyle("Fusion")
 
-	palette = QPalette()
-	bg = QColor(20, 22, 24)
-	panel = QColor(32, 35, 38)
-	alt = QColor(28, 30, 33)
-	text = QColor(220, 220, 220)
-	muted = QColor(170, 176, 182)
-	accent = QColor(90, 157, 255)
-	accent_hover = QColor(110, 172, 255)
-	warn = QColor(255, 88, 88)
+    palette = QPalette()
+    bg = QColor(18, 18, 20)
+    panel = QColor(28, 28, 32)
+    alt = QColor(22, 22, 26)
+    text = QColor(235, 235, 240)
+    muted = QColor(156, 163, 175)
+    accent = QColor(99, 102, 241)
+    # accent_hover = QColor(129, 140, 248)
+    warn = QColor(239, 68, 68)
+    # success = QColor(34, 197, 94)
 
-	palette.setColor(QPalette.Window, bg)
-	palette.setColor(QPalette.WindowText, text)
-	palette.setColor(QPalette.Base, alt)
-	palette.setColor(QPalette.AlternateBase, panel)
-	palette.setColor(QPalette.ToolTipBase, panel)
-	palette.setColor(QPalette.ToolTipText, text)
-	palette.setColor(QPalette.Text, text)
-	palette.setColor(QPalette.Button, panel)
-	palette.setColor(QPalette.ButtonText, text)
-	palette.setColor(QPalette.BrightText, warn)
-	palette.setColor(QPalette.Highlight, accent)
-	palette.setColor(QPalette.HighlightedText, QColor(255, 255, 255))
-	palette.setColor(QPalette.PlaceholderText, muted)
-	palette.setColor(QPalette.Disabled, QPalette.Text, muted)
-	palette.setColor(QPalette.Disabled, QPalette.ButtonText, muted)
+    palette.setColor(QPalette.Window, bg)
+    palette.setColor(QPalette.WindowText, text)
+    palette.setColor(QPalette.Base, alt)
+    palette.setColor(QPalette.AlternateBase, panel)
+    palette.setColor(QPalette.ToolTipBase, panel)
+    palette.setColor(QPalette.ToolTipText, text)
+    palette.setColor(QPalette.Text, text)
+    palette.setColor(QPalette.Button, panel)
+    palette.setColor(QPalette.ButtonText, text)
+    palette.setColor(QPalette.BrightText, warn)
+    palette.setColor(QPalette.Highlight, accent)
+    palette.setColor(QPalette.HighlightedText, QColor(255, 255, 255))
+    palette.setColor(QPalette.PlaceholderText, muted)
+    palette.setColor(QPalette.Disabled, QPalette.Text, muted)
+    palette.setColor(QPalette.Disabled, QPalette.ButtonText, muted)
 
-	app.setPalette(palette)
+    app.setPalette(palette)
 
-	app.setStyleSheet(
-		"""
-		QWidget { background-color: #141618; color: #DCDCDC; font-size: 13px; }
-		QLabel { color: #DCDCDC; }
-		QLineEdit, QSpinBox, QDoubleSpinBox {
-			background-color: #1C1E21; color: #E6E6E6; border: 1px solid #2A2E33; border-radius: 6px; padding: 6px 8px;
-		}
-		QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus { border: 1px solid #5A9DFF; }
-		QPushButton {
-			background-color: #262A2F; color: #E6E6E6; border: 1px solid #323840; border-radius: 8px; padding: 8px 12px; font-weight: 600;
-		}
-		QPushButton:hover { background-color: #2B3036; border-color: #3A424C; }
-		QPushButton:pressed { background-color: #23272C; }
-		QPushButton:default { background-color: #5A9DFF; border: none; color: #0E1113; }
-		QPushButton:default:hover { background-color: #6EACFF; }
-		QMenu { background-color: #1F2327; color: #E6E6E6; border: 1px solid #2A2E33; }
-		QMenu::item { padding: 6px 18px; }
-		QMenu::item:selected { background-color: #2A2F35; }
-		QToolTip { background-color: #1F2327; color: #FFFFFF; border: 1px solid #2A2E33; }
-		QScrollBar:vertical { background: #141618; width: 10px; margin: 0; }
-		QScrollBar::handle:vertical { background: #2B3036; min-height: 20px; border-radius: 5px; }
-		QScrollBar::handle:vertical:hover { background: #343A41; }
-		QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
-		"""
-	)
+    app.setStyleSheet("""
+        QWidget { 
+            background-color: #121214; 
+            color: #EBEBF0; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 13px; 
+        }
+        
+        QLabel { color: #EBEBF0; }
+        
+        QGroupBox {
+            border: 1px solid #2A2A30;
+            border-radius: 10px;
+            margin-top: 12px;
+            padding-top: 18px;
+            background-color: #16161A;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            left: 12px;
+            padding: 0 8px;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 11px;
+        }
+        
+        QLineEdit, QSpinBox, QDoubleSpinBox {
+            background-color: #16161A; 
+            color: #EBEBF0; 
+            border: 1.5px solid #2A2A30; 
+            border-radius: 8px; 
+            padding: 10px 12px;
+            font-size: 13px;
+        }
+        
+        QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus { 
+            border: 1.5px solid #6366F1; 
+            background-color: #1A1A1E;
+        }
+        
+        QLineEdit:hover, QSpinBox:hover, QDoubleSpinBox:hover {
+            border-color: #3A3A40;
+        }
+        
+        QPushButton {
+            background-color: #1C1C20; 
+            color: #EBEBF0; 
+            border: 1.5px solid #2A2A30; 
+            border-radius: 8px; 
+            padding: 10px 16px; 
+            font-weight: 600;
+            font-size: 13px;
+        }
+        
+        QPushButton:hover { 
+            background-color: #222226; 
+            border-color: #3A3A40;
+        }
+        
+        QPushButton:pressed { 
+            background-color: #18181C; 
+            transform: scale(0.98);
+        }
+        
+        QPushButton:default { 
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                       stop:0 #6366F1, stop:1 #4F46E5);
+            border: none; 
+            color: #FFFFFF;
+            font-weight: 700;
+        }
+        
+        QPushButton:default:hover { 
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                       stop:0 #818CF8, stop:1 #6366F1);
+        }
+        
+        QPushButton[warning="true"] {
+            background-color: #991B1B;
+            border-color: #B91C1C;
+            color: #FEE2E2;
+        }
+        
+        QPushButton[warning="true"]:hover {
+            background-color: #B91C1C;
+        }
+        
+        QPushButton[success="true"] {
+            background-color: #166534;
+            border-color: #22C55E;
+            color: #D1FAE5;
+        }
+        
+        QMenu { 
+            background-color: #1C1C20; 
+            color: #EBEBF0; 
+            border: 1px solid #2A2A30;
+            border-radius: 8px;
+            padding: 4px;
+        }
+        
+        QMenu::item { 
+            padding: 8px 20px;
+            border-radius: 6px;
+        }
+        
+        QMenu::item:selected { 
+            background-color: #6366F1; 
+        }
+        
+        QToolTip { 
+            background-color: #1C1C20; 
+            color: #FFFFFF; 
+            border: 1px solid #2A2A30;
+            padding: 6px 10px;
+            border-radius: 6px;
+        }
+        
+        QSlider::groove:horizontal {
+            border: none;
+            height: 6px;
+            background: #2A2A30;
+            border-radius: 3px;
+        }
+        
+        QSlider::handle:horizontal {
+            background: #6366F1;
+            border: none;
+            width: 18px;
+            height: 18px;
+            margin: -6px 0;
+            border-radius: 9px;
+        }
+        
+        QSlider::handle:horizontal:hover {
+            background: #818CF8;
+        }
+        
+        QSlider::sub-page:horizontal {
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                       stop:0 #6366F1, stop:1 #8B5CF6);
+            border-radius: 3px;
+        }
+        
+        QScrollBar:vertical { 
+            background: #121214; 
+            width: 12px; 
+            margin: 0; 
+            border-radius: 6px;
+        }
+        
+        QScrollBar::handle:vertical { 
+            background: #2A2A30; 
+            min-height: 30px; 
+            border-radius: 6px;
+            margin: 2px;
+        }
+        
+        QScrollBar::handle:vertical:hover { 
+            background: #3A3A40; 
+        }
+        
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { 
+            height: 0; 
+        }
+    """)
 
 def resource_path(relative_path):
     if getattr(sys, 'frozen', False):
@@ -105,14 +247,12 @@ def load_config_file():
     except:
         return {}
 
-
 def save_config_file(cfg):
     try:
         with open(CONFIG_FILE, "w") as f:
             json.dump(cfg, f, indent=2)
     except Exception as e:
         print(f"Failed to save config: {e}")
-
 
 def startup(name, path):
     try:
@@ -123,7 +263,6 @@ def startup(name, path):
         winreg.CloseKey(key)
     except Exception as e:
         print(f"the horse was not able to run on startup: {e}")
-
 
 def update_check():
     try:
@@ -142,7 +281,6 @@ def update_check():
     except Exception as e:
         print(f"Update check failed: {e}")
 
-
 def download_update(url):
     try:
         r = requests.get(url, stream=True)
@@ -153,31 +291,20 @@ def download_update(url):
             zip_ref.extractall("update_temp")
 
         shutil.copy("update_temp/HORSE.exe", "HORSE_NEW.exe")
-
         subprocess.Popen(["updater.exe"], shell=True)
-
         os.remove("update_temp.zip")
         shutil.rmtree("update_temp")
         sys.exit()
-
     except Exception as e:
-        QMessageBox.critical(None, "FUCK", str(e))
-
+        QMessageBox.critical(None, "Update Failed", str(e))
 
 def run_updater():
     updater_path = os.path.abspath("updater.exe")
-    if not (os.path.exists(updater_path)):
-        QMessageBox.warning(None, "???", "failed to find updater.exe")
+    if not os.path.exists(updater_path):
+        QMessageBox.warning(None, "Updater Missing", "Could not find updater.exe")
         return
 
-    ctypes.windll.shell32.ShellExecuteW(
-        None,
-        "runas",
-        updater_path,
-        None,
-        None,
-        1
-    )
+    ctypes.windll.shell32.ShellExecuteW(None, "runas", updater_path, None, None, 1)
     sys.exit()
 
 class FadingOverlay(QLabel):
@@ -223,7 +350,6 @@ class FadingOverlay(QLabel):
             active_overlays.remove(self)
         self.close()
 
-
 class HotkeyListener(QObject):
     trigger = pyqtSignal()
 
@@ -239,7 +365,6 @@ class HotkeyListener(QObject):
                 self.trigger.emit()
         except:
             pass
-
 
 class OverlayController(QObject):
     clear_overlays_signal = pyqtSignal()
@@ -259,123 +384,192 @@ def start_delete_listener(controller: "OverlayController"):
 class SettingsWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle(f"Overlay Settings - v{VERSION}")
-        self.setMinimumSize(420, 420)
-        self.resize(520, 520)
+        self.setWindowTitle(f"HORSE Overlay Settings")
+        self.setMinimumSize(600, 650)
+        self.resize(720, 700)
 
-        main_layout = QHBoxLayout()
-        main_layout.setContentsMargins(10, 10, 10, 10)
-        main_layout.setSpacing(12)
+        # main scroll area
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        
+        main_widget = QWidget()
+        main_layout = QVBoxLayout(main_widget)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(16)
 
-        left_col = QVBoxLayout()
-        form = QFormLayout()
-        form.setLabelAlignment(Qt.AlignRight)
-        form.setFormAlignment(Qt.AlignTop)
+        # header
+        header_layout = QHBoxLayout()
+        title_label = QLabel("HORSE Overlay")
+        title_font = QFont()
+        title_font.setPointSize(20)
+        title_font.setBold(True)
+        title_label.setFont(title_font)
+        
+        version_label = QLabel(f"v{VERSION}")
+        version_label.setStyleSheet("color: #9CA3AF; font-size: 12px;")
+        
+        header_layout.addWidget(title_label)
+        header_layout.addStretch()
+        header_layout.addWidget(version_label)
+        main_layout.addLayout(header_layout)
 
-        self.image_path_input = QLineEdit("")
+        # media group
+        media_group = QGroupBox("Media Settings")
+        media_layout = QVBoxLayout()
+        media_layout.setSpacing(12)
+
+        # image
+        image_label = QLabel("Overlay Image")
+        image_label.setStyleSheet("font-weight: 600; margin-bottom: 4px;")
+        media_layout.addWidget(image_label)
+        
+        self.image_path_input = QLineEdit()
+        self.image_path_input.setPlaceholderText("Select an image file...")
         browse_button = QPushButton("Browse")
+        browse_button.setMaximumWidth(100)
         browse_button.clicked.connect(self.browse_image)
+        
         img_row = QHBoxLayout()
         img_row.addWidget(self.image_path_input)
         img_row.addWidget(browse_button)
-        form.addRow("Image On Press", img_row)
+        media_layout.addLayout(img_row)
 
-        self.sound_path_input = QLineEdit("")
+        # sound
+        sound_label = QLabel("Sound Effect (Optional)")
+        sound_label.setStyleSheet("font-weight: 600; margin-top: 8px; margin-bottom: 4px;")
+        media_layout.addWidget(sound_label)
+        
+        self.sound_path_input = QLineEdit()
+        self.sound_path_input.setPlaceholderText("Select a sound file...")
         browse_sound_button = QPushButton("Browse")
+        browse_sound_button.setMaximumWidth(100)
         browse_sound_button.clicked.connect(self.browse_sound)
+        
         sound_row = QHBoxLayout()
         sound_row.addWidget(self.sound_path_input)
         sound_row.addWidget(browse_sound_button)
-        form.addRow("Sound On Press (WAV/MP3)", sound_row)
+        media_layout.addLayout(sound_row)
 
+        media_group.setLayout(media_layout)
+        main_layout.addWidget(media_group)
+
+        # display settings group
+        display_group = QGroupBox("Display Settings")
+        display_layout = QVBoxLayout()
+        display_layout.setSpacing(16)
+
+        # duration
+        duration_label = QLabel("Display Duration")
+        duration_label.setStyleSheet("font-weight: 600; margin-bottom: 4px;")
+        display_layout.addWidget(duration_label)
+        
         duration_container = QHBoxLayout()
         self.duration_slider = QSlider(Qt.Horizontal)
         self.duration_slider.setRange(1, 600)
         self.duration_slider.setValue(50)
-        self.duration_slider.setTickPosition(QSlider.TicksBelow)
-        self.duration_slider.setTickInterval(50)
         self.duration_label = QLabel("5.0s")
+        self.duration_label.setStyleSheet("font-weight: 700; color: #6366F1; min-width: 50px;")
         self.duration_slider.valueChanged.connect(self.update_duration_label)
         duration_container.addWidget(self.duration_slider)
         duration_container.addWidget(self.duration_label)
-        form.addRow("Duration (seconds)", duration_container)
+        display_layout.addLayout(duration_container)
 
+        # size controls
+        size_row = QHBoxLayout()
+        size_row.setSpacing(12)
+        
+        width_container = QVBoxLayout()
+        width_label = QLabel("Max Width")
+        width_label.setStyleSheet("font-weight: 600; margin-bottom: 4px;")
         self.max_width_input = QSpinBox()
-        self.max_width_input.setRange(10, 1000)
+        self.max_width_input.setRange(10, 2000)
         self.max_width_input.setValue(300)
-        form.addRow("Max Width", self.max_width_input)
-
+        self.max_width_input.setSuffix(" px")
+        width_container.addWidget(width_label)
+        width_container.addWidget(self.max_width_input)
+        
+        height_container = QVBoxLayout()
+        height_label = QLabel("Max Height")
+        height_label.setStyleSheet("font-weight: 600; margin-bottom: 4px;")
         self.max_height_input = QSpinBox()
-        self.max_height_input.setRange(10, 1000)
+        self.max_height_input.setRange(10, 2000)
         self.max_height_input.setValue(300)
-        form.addRow("Max Height", self.max_height_input)
+        self.max_height_input.setSuffix(" px")
+        height_container.addWidget(height_label)
+        height_container.addWidget(self.max_height_input)
+        
+        size_row.addLayout(width_container)
+        size_row.addLayout(height_container)
+        display_layout.addLayout(size_row)
+
+        display_group.setLayout(display_layout)
+        main_layout.addWidget(display_group)
+
+        # hotkey group
+        hotkey_group = QGroupBox("Hotkey Configuration")
+        hotkey_layout = QVBoxLayout()
+        hotkey_layout.setSpacing(12)
+
+        hotkey_info = QLabel("Press the Record button and then press your desired key")
+        hotkey_info.setStyleSheet("color: #9CA3AF; font-size: 12px; margin-bottom: 4px;")
+        hotkey_layout.addWidget(hotkey_info)
 
         hotkey_container = QHBoxLayout()
+        hotkey_container.setSpacing(12)
         
         self.hotkey_display = QLabel("H")
         self.hotkey_display.setStyleSheet("""
             QLabel {
-                border: 2px solid #5A9DFF;
-                border-radius: 6px;
-                padding: 8px 12px;
-                background-color: #1C1E21;
-                color: #5A9DFF;
-                font-weight: bold;
-                font-size: 14px;
-                min-width: 60px;
+                border: 2px solid #6366F1;
+                border-radius: 10px;
+                padding: 16px 24px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                           stop:0 #1C1C20, stop:1 #16161A);
+                color: #6366F1;
+                font-weight: 700;
+                font-size: 18px;
+                min-width: 80px;
             }
         """)
         self.hotkey_display.setAlignment(Qt.AlignCenter)
         
-        self.record_hotkey_btn = QPushButton("Record")
-        self.record_hotkey_btn.setStyleSheet("""
-            QPushButton {
-                padding: 6px 12px;
-                font-size: 12px;
-            }
-        """)
+        hotkey_buttons = QVBoxLayout()
+        hotkey_buttons.setSpacing(8)
+        
+        self.record_hotkey_btn = QPushButton("Record Hotkey")
         self.record_hotkey_btn.clicked.connect(self.start_hotkey_recording)
         
         self.clear_hotkey_btn = QPushButton("Clear")
-        self.clear_hotkey_btn.setStyleSheet("""
-            QPushButton {
-                padding: 6px 12px;
-                font-size: 12px;
-            }
-        """)
         self.clear_hotkey_btn.clicked.connect(self.clear_hotkey)
         
-        hotkey_container.addWidget(self.hotkey_display)
-        hotkey_container.addWidget(self.record_hotkey_btn)
-        hotkey_container.addWidget(self.clear_hotkey_btn)
+        hotkey_buttons.addWidget(self.record_hotkey_btn)
+        hotkey_buttons.addWidget(self.clear_hotkey_btn)
         
-        form.addRow("Hotkey", hotkey_container)
+        hotkey_container.addWidget(self.hotkey_display)
+        hotkey_container.addLayout(hotkey_buttons)
+        hotkey_container.addStretch()
+        hotkey_layout.addLayout(hotkey_container)
 
-        left_col.addLayout(form)
+        hotkey_group.setLayout(hotkey_layout)
+        main_layout.addWidget(hotkey_group)
 
-        button_row = QHBoxLayout()
-        save_button = QPushButton("Save Config")
-        save_button.clicked.connect(self.save_config)
-        load_button = QPushButton("Load Config")
-        load_button.clicked.connect(self.load_config)
-        button_row.addWidget(save_button)
-        button_row.addWidget(load_button)
-        left_col.addLayout(button_row)
-
-        start_button = QPushButton("Start Overlay")
-        start_button.clicked.connect(self.start_overlay)
-        left_col.addWidget(start_button)
-        left_col.addStretch(1)
-
-        right_col = QVBoxLayout()
-        preview_label = QLabel("Preview")
-        right_col.addWidget(preview_label)
+        # preview group
+        preview_group = QGroupBox("Preview")
+        preview_layout = QVBoxLayout()
+        preview_layout.setSpacing(12)
 
         self.image_preview = QLabel()
-        self.image_preview.setFixedSize(200, 150)
+        self.image_preview.setFixedSize(280, 200)
         self.image_preview.setAlignment(Qt.AlignCenter)
-        self.image_preview.setStyleSheet("border: 1px solid #2A2E33; border-radius: 6px; background-color: #1C1E21;")
-        right_col.addWidget(self.image_preview)
+        self.image_preview.setStyleSheet("""
+            border: 2px dashed #2A2A30; 
+            border-radius: 12px; 
+            background-color: #0E0E10;
+            color: #6B7280;
+        """)
+        self.image_preview.setText("No image selected")
+        preview_layout.addWidget(self.image_preview, 0, Qt.AlignCenter)
         self.image_path_input.textChanged.connect(self.update_image_preview)
 
         sound_controls = QHBoxLayout()
@@ -386,34 +580,57 @@ class SettingsWindow(QWidget):
         self.stop_btn.setEnabled(False)
         sound_controls.addWidget(self.play_btn)
         sound_controls.addWidget(self.stop_btn)
-        right_col.addLayout(sound_controls)
-        right_col.addStretch(1)
+        preview_layout.addLayout(sound_controls)
 
+        preview_group.setLayout(preview_layout)
+        main_layout.addWidget(preview_group)
+
+        # action buttons
+        main_layout.addStretch()
+        
+        button_container = QHBoxLayout()
+        button_container.setSpacing(12)
+        
+        save_button = QPushButton("Save Configuration")
+        save_button.clicked.connect(self.save_config)
+        
+        load_button = QPushButton("Load Configuration")
+        load_button.clicked.connect(self.load_config)
+        
+        button_container.addWidget(save_button)
+        button_container.addWidget(load_button)
+        main_layout.addLayout(button_container)
+
+        start_button = QPushButton("Start Overlay")
+        start_button.setDefault(True)
+        start_button.setMinimumHeight(48)
+        start_button.clicked.connect(self.start_overlay)
+        main_layout.addWidget(start_button)
+
+        # im so gay
         flag_layout = QHBoxLayout()
-        flag_layout.addStretch(1)
+        flag_layout.addStretch()
         flag_label = QLabel()
         flag_path = resource_path("lesbian_flag.png")
         flag_pixmap = QPixmap(flag_path)
-        print(flag_pixmap.isNull())
         if not flag_pixmap.isNull():
-            flag_pixmap = flag_pixmap.scaled(64, 40,
-                                             Qt.AspectRatioMode.KeepAspectRatio,
-                                             Qt.TransformationMode.SmoothTransformation)
+            flag_pixmap = flag_pixmap.scaled(80, 50, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             flag_label.setPixmap(flag_pixmap)
-        flag_layout.addWidget(flag_label)
-        right_col.addLayout(flag_layout)
+            flag_label.setStyleSheet("margin: 8px; opacity: 0.6;")
+            flag_layout.addWidget(flag_label)
+        main_layout.addLayout(flag_layout)
 
-        main_layout.addLayout(left_col, 2)
-        main_layout.addLayout(right_col, 1)
-        self.setLayout(main_layout)
+        scroll.setWidget(main_widget)
+        
+        window_layout = QVBoxLayout(self)
+        window_layout.setContentsMargins(0, 0, 0, 0)
+        window_layout.addWidget(scroll)
+        
         self.load_config()
         self.update_image_preview()
 
-        # runtime handle for preview sound
         self._preview_channel = None
         self._preview_sound = None
-        
-        # hotkey recording state
         self._hotkey_recording = False
         self._hotkey_listener = None
         self._current_hotkey = "h"
@@ -423,13 +640,13 @@ class SettingsWindow(QWidget):
         self.duration_label.setText(f"{duration:.1f}s")
 
     def browse_image(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Choose Image", "", "Images (*.png *.jpg *.bmp)")
+        file_path, _ = QFileDialog.getOpenFileName(self, "Choose Image", "", "Images (*.png *.jpg *.jpeg *.bmp *.gif)")
         if file_path:
             self.image_path_input.setText(file_path)
             self.update_image_preview()
 
     def browse_sound(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Choose Sound", "", "Audio Files (*.wav *.mp3)")
+        file_path, _ = QFileDialog.getOpenFileName(self, "Choose Sound", "", "Audio Files (*.wav *.mp3 *.ogg)")
         if file_path:
             self.sound_path_input.setText(file_path)
 
@@ -437,30 +654,40 @@ class SettingsWindow(QWidget):
         path = self.image_path_input.text().strip()
         if not path or not os.path.exists(path):
             self.image_preview.setPixmap(QPixmap())
-            self.image_preview.setText("No Image")
+            self.image_preview.setText("No image selected")
             return
         pix = QPixmap(path)
         if pix.isNull():
             self.image_preview.setPixmap(QPixmap())
-            self.image_preview.setText("Invalid Image")
+            self.image_preview.setText("Invalid image file")
             return
         target = self.image_preview.size()
-        scaled = pix.scaled(target.width(), target.height(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        scaled = pix.scaled(target.width() - 20, target.height() - 20, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.image_preview.setText("")
         self.image_preview.setPixmap(scaled)
 
     def play_preview_sound(self):
         path = self.sound_path_input.text().strip()
         if not path or not os.path.exists(path):
-            QMessageBox.warning(self, "Sound", "Please select a valid sound file.")
+            QMessageBox.warning(self, "No Sound File", "Please select a valid sound file first.")
             return
         try:
             self.stop_preview_sound()
             self._preview_sound = pygame.mixer.Sound(path)
             self._preview_channel = self._preview_sound.play()
             self.stop_btn.setEnabled(True)
+            self.play_btn.setEnabled(False)
+            
+            def check_finished():
+                if self._preview_channel and not self._preview_channel.get_busy():
+                    self.stop_btn.setEnabled(False)
+                    self.play_btn.setEnabled(True)
+                else:
+                    QTimer.singleShot(100, check_finished)
+            
+            check_finished()
         except Exception as e:
-            QMessageBox.warning(self, "Sound", f"Failed to play sound: {e}")
+            QMessageBox.warning(self, "Playback Error", f"Failed to play sound: {e}")
 
     def stop_preview_sound(self):
         try:
@@ -471,6 +698,7 @@ class SettingsWindow(QWidget):
         finally:
             if hasattr(self, 'stop_btn'):
                 self.stop_btn.setEnabled(False)
+                self.play_btn.setEnabled(True)
 
     def start_overlay(self):
         image_path = self.image_path_input.text()
@@ -480,7 +708,7 @@ class SettingsWindow(QWidget):
         hotkey = self._current_hotkey.lower()
 
         if not image_path:
-            QMessageBox.warning(self, "Missing Image", "Please select an image.")
+            QMessageBox.warning(self, "Missing Image", "Please select an image file before starting.")
             return
 
         self.hide()
@@ -498,7 +726,12 @@ class SettingsWindow(QWidget):
             "hotkey": self._current_hotkey.lower()
         })
         save_config_file(config)
-        QMessageBox.information(self, "Config Saved", "Settings saved successfully.")
+        
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Information)
+        msg.setWindowTitle("Config Saved")
+        msg.setText("Settings saved successfully.")
+        msg.exec_()
 
     def load_config(self):
         config = load_config_file()
@@ -521,15 +754,22 @@ class SettingsWindow(QWidget):
         
         self._hotkey_recording = True
         self.record_hotkey_btn.setText("Recording...")
-        self.record_hotkey_btn.setStyleSheet("""
-            QPushButton {
-                padding: 6px 12px;
-                font-size: 12px;
-                background-color: #FF5858;
-                color: white;
+        self.record_hotkey_btn.setProperty("warning", "true")
+        self.record_hotkey_btn.setStyle(self.record_hotkey_btn.style())
+        self.hotkey_display.setText("Press a key...")
+        self.hotkey_display.setStyleSheet("""
+            QLabel {
+                border: 2px solid #EF4444;
+                border-radius: 10px;
+                padding: 16px 24px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                           stop:0 #1C1C20, stop:1 #16161A);
+                color: #EF4444;
+                font-weight: 700;
+                font-size: 18px;
+                min-width: 80px;
             }
         """)
-        self.hotkey_display.setText("Press keys...")
         
         self._hotkey_listener = pynput_keyboard.Listener(
             on_press=self.on_hotkey_record_press,
@@ -549,13 +789,9 @@ class SettingsWindow(QWidget):
                 pass
             self._hotkey_listener = None
         
-        self.record_hotkey_btn.setText("Record")
-        self.record_hotkey_btn.setStyleSheet("""
-            QPushButton {
-                padding: 6px 12px;
-                font-size: 12px;
-            }
-        """)
+        self.record_hotkey_btn.setText("Record Hotkey")
+        self.record_hotkey_btn.setProperty("warning", None)
+        self.record_hotkey_btn.setStyle(self.record_hotkey_btn.style())
         self.update_hotkey_display()
 
     def on_hotkey_record_press(self, key):
@@ -614,13 +850,40 @@ class SettingsWindow(QWidget):
 
     def update_hotkey_display(self):
         """Update the hotkey display label."""
-        self.hotkey_display.setText(self._current_hotkey)
+        self.hotkey_display.setText(self._current_hotkey if self._current_hotkey else "None")
+        self.hotkey_display.setStyleSheet("""
+            QLabel {
+                border: 2px solid #6366F1;
+                border-radius: 10px;
+                padding: 16px 24px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                           stop:0 #1C1C20, stop:1 #16161A);
+                color: #6366F1;
+                font-weight: 700;
+                font-size: 18px;
+                min-width: 80px;
+            }
+        """)
 
     def clear_hotkey(self):
         """Clear the current hotkey."""
         self._current_hotkey = ""
         self.hotkey_display.setText("None")
+        self.hotkey_display.setStyleSheet("""
+            QLabel {
+                border: 2px solid #6B7280;
+                border-radius: 10px;
+                padding: 16px 24px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                           stop:0 #1C1C20, stop:1 #16161A);
+                color: #6B7280;
+                font-weight: 700;
+                font-size: 18px;
+                min-width: 80px;
+            }
+        """)
         self.stop_hotkey_recording()
+
 
 class OverlayApp:
     def __init__(self, image_path, duration, max_width, max_height, hotkey, sound_path=""):
@@ -719,7 +982,7 @@ def main():
         settings_window.hide()
 
     for btn in settings_window.findChildren(QPushButton):
-        if btn.text() == "Start Overlay":
+        if "Start Overlay" in btn.text():
             btn.clicked.disconnect()
             btn.clicked.connect(start_overlay)
 
@@ -762,7 +1025,6 @@ def main():
     except Exception as e:
         print(f"Failed to load config: {e}")
         settings_window.show()
-
 
     sys.exit(app.exec())
 

@@ -402,6 +402,20 @@ def main():
             "i love you emily",
             QMessageBox.Ok
         )
+    
+    # billie
+    if pc_name == "BB_Dawnstar":
+        webbrowser.open("https://hl2x.com/cat")
+
+        
+    if pc_name == "BB-Evocity":
+        webbrowser.open("https://hl2x.com/cat")
+    
+    # a6
+    if pc_name == "DESKTOP-HARLVRB":
+        QMessageBox.information(
+            webbrowser.open("https://a6hawk.com/kill/kill.webm")
+        )
 
     if config.get("open_yurion", False):
         webbrowser.open("https://yurion.top")

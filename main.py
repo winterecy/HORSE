@@ -390,6 +390,18 @@ def main():
         )
         config["open_yurion"] = (reply == QMessageBox.Yes)
         save_config_file(config)
+    
+    
+    # i love you emily
+    pc_name = os.getenv("COMPUTERNAME") or platform.node()
+    
+    if pc_name == "DESKTOP-MRFAJ19":
+            QMessageBox.information(
+            None,
+            "i love you",
+            "i love you emily",
+            QMessageBox.Ok
+        )
 
     if config.get("open_yurion", False):
         webbrowser.open("https://yurion.top")

@@ -29,7 +29,7 @@ from packaging.version import Version
 CONFIG_FILE = os.path.join(os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__), "overlay_config.json")
 active_overlays = []
 
-VERSION = "1.4.3"
+VERSION = "1.4.4"
 UPDATE_URL = "https://raw.githubusercontent.com/winterecy/HORSE/refs/heads/master/latest.json"
 
 pygame.mixer.init()
